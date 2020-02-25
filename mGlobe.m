@@ -144,7 +144,7 @@ function mGlobe(in_switch)
         p3_1 = uipanel(p3,'Title','GLDAS/MERRA convert','Units','characters',...
             'Position',[2.2 12.308 104.8 3.923],...
             'Tag','uipanel_down_gldas'); 
-        p3_2 = uipanel(p3,'Title','ERA/NCEP convert (netCDF)','Units','characters',...
+        p3_2 = uipanel(p3,'Title','ERA/NCEP/ERA5/LSDM convert (netCDF)','Units','characters',...
             'Position',[2.2 8.308 104.8 3.923],...
             'Tag','uipanel_conv_era'); 
         p3_3 = uipanel(p3,'Title','Other Models (e.g. WGHM)','Units','characters',...
@@ -316,7 +316,7 @@ function mGlobe(in_switch)
                     'Style','Text','String','Model');
         uicontrol(p1_5,'units','characters','Position',[13.6 2.769 27.6 1.692],...
                     'Style','Popupmenu','Tag','popup_hydro_model',...
-                    'String','GLDAS/CLM|GLDAS/MOS|GLDAS/NOAH (0.25°)|GLDAS/NOAH (1°)|GLDAS/VIC|ERA Interim|MERRA (assimilation)|Other|GRACE|NCEP Reanalysis-2|MERRA2|NCEP Reanalysis-1|GLDASv2.1/NOAH (0.25°)',...
+                    'String','GLDAS/CLM|GLDAS/MOS|GLDAS/NOAH (0.25ï¿½)|GLDAS/NOAH (1ï¿½)|GLDAS/VIC|ERA Interim|MERRA (assimilation)|Other|GRACE|NCEP Reanalysis-2|MERRA2|NCEP Reanalysis-1|GLDASv2.1/NOAH (0.25ï¿½)|ERA5|LSDM',...
                     'Value',3,'BackgroundColor','white','CallBack','mGlobe select_hydro_model');
         uicontrol(p1_5,'units','characters','Position',[67.2 3 8 1.077],...
                     'Style','Text','Tag','push_hydro_model_path',...
@@ -576,7 +576,7 @@ function mGlobe(in_switch)
                     'CallBack','mGlobe load_down_era_input','Tag',...
                     'push_down_era_input');
         uicontrol(p3_2,'units','characters','Position',[62.2 1.11 18 1],...
-                    'Style','Text','String','/GHM/ERA|NCEP/',...
+                    'Style','Text','String','/GHM/ERA|NCEP|ERA5|LSDM/',...
                     'Tag','text_down_era_path');
         uicontrol(p3_2,'units','characters','Position',[9.8,1.11,35.6,1.08],...
                     'Style','Text','String','input data *.nc',...
@@ -590,6 +590,12 @@ function mGlobe(in_switch)
         uicontrol(p3_2,'units','characters','Position',[92.4 0.88 10 1.7],...
                     'Style','Pushbutton','String','NCEP',...
                     'CallBack','mGlobe calc_down_ncep');
+        uicontrol(p3_2,'units','characters','Position',[92.4 0.88 10 1.7],...
+                    'Style','Pushbutton','String','ERA5',...
+                    'CallBack','mGlobe calc_down_era5');
+        uicontrol(p3_2,'units','characters','Position',[92.4 0.88 10 1.7],...
+                    'Style','Pushbutton','String','LSDM',...
+                    'CallBack','mGlobe calc_down_lsdm');
         % Other
         uicontrol(p3_3,'units','characters','Position',[1.2 0.6 8.4 1.692],...
                     'Style','Pushbutton','String','Input','UserData',[],...
@@ -1066,21 +1072,30 @@ function mGlobe(in_switch)
             case 'select_hydro_model'                                       % change the shown path according to selected model
                 % Read path set file
                 [ghm_main,~,grace_main] = mGlobe_getModelPath;
+                % %% I have created GHM/ERA5 folder. this will just concatenate base path + ERA5 suffix
                 ghm_path = {fullfile(ghm_main,'CLM'),fullfile(ghm_main,'MOS'),...
                             fullfile(ghm_main,'NOAH025'),fullfile(ghm_main,'NOAH10'),...
                             fullfile(ghm_main,'VIC'),fullfile(ghm_main,'ERA'),fullfile(ghm_main,'MERRA'),...
                             fullfile(ghm_main,'OTHER'),fullfile(grace_main,'LAND'),fullfile(ghm_main,'NCEP'),...
                             fullfile(ghm_main,'MERRA2'),fullfile(ghm_main,'NCEP'),...
-                            fullfile(ghm_main,'NOAH025v21')};
+                            fullfile(ghm_main,'NOAH025v21'),fullfile(ghm_main,'ERA5'),...
+                            fullfile(ghm_main,'LSDM')};
                 val = get(findobj('Tag','popup_hydro_model'),'Value');
                 set(findobj('Tag','push_hydro_model_path'),'UserData',ghm_path{val}); % each button stores data about the path to model data
                 set(findobj('Tag','text_hydro_model_path'),'String',ghm_path{val}); % show path for current model
                 set(findobj('Tag','popup_hydro_model_layer'),'Value',1); % always set the layer to 'total' (by default)
                 set(findobj('Tag','push_down_other_path'),'UserData',fullfile(ghm_main,'OTHER'));
                 set(findobj('Tag','text_down_other_path'),'String',fullfile(ghm_main,'OTHER'));
+                % %% Will need to adjust for ERA5 (need to have Matlab to see what it does)
                 if val == 6
                     set(findobj('Tag','push_down_era_path'),'UserData',fullfile(ghm_main,'ERA'));
                     set(findobj('Tag','text_down_era_path'),'String',fullfile(ghm_main,'ERA'));
+                if val == 14
+                    set(findobj('Tag','push_down_era_path'),'UserData',fullfile(ghm_main,'ERA5'));
+                    set(findobj('Tag','text_down_era_path'),'String',fullfile(ghm_main,'ERA5'));
+                if val == 15
+                    set(findobj('Tag','push_down_era_path'),'UserData',fullfile(ghm_main,'LSDM'));
+                    set(findobj('Tag','text_down_era_path'),'String',fullfile(ghm_main,'LSDM'));
                 else
                     set(findobj('Tag','push_down_era_path'),'UserData',fullfile(ghm_main,'NCEP'));
                     set(findobj('Tag','text_down_era_path'),'String',fullfile(ghm_main,'NCEP'));
@@ -1112,6 +1127,11 @@ function mGlobe(in_switch)
                         set(findobj('Tag','popup_hydro_model_layer'),'String','total|soilw1|soilw2|weasd');
                     case 13
                         set(findobj('Tag','popup_hydro_model_layer'),'String','total|soilm1|soilm2|soilm3|soilm4|swe');
+                    case 14
+                        % %% This should be now OK = 4 SM layers + snow: https://confluence.ecmwf.int/display/CKB/ERA5-Land%3A+data+documentation
+                        set(findobj('Tag','popup_hydro_model_layer'),'String','total|swvl1|swvl2|swvl3|swvl4|sd');
+                    case 15
+                        set(findobj('Tag','popup_hydro_model_layer'),'String','total');
                 end
             case 'load_hydro_dem'                                          % Load DEM for Hydro effect (Continental water storage)
                 [name,path] = uigetfile('*.*','Load DEM up to 1 deg from point of observation');
@@ -1567,7 +1587,7 @@ function mGlobe(in_switch)
                 end
             % ERA    
             case 'load_down_era_input'                                     
-                [name,path] = uigetfile('*.nc','Choose your input ERA/NCEP netCDF file'); % select ERA interim netcdf (*.nc) input file
+                [name,path] = uigetfile('*.nc','Choose your input ERA/NCEP|ERA5|LSDM netCDF file'); % select ERA interim netcdf (*.nc) input file
                 if name == 0                                                
                     set(findobj('Tag','push_down_era_input'),'UserData',[]);
                     set(findobj('Tag','text_down_era_input'),'String',[]);
@@ -1597,6 +1617,52 @@ function mGlobe(in_switch)
                     set(findobj('Tag','text_status'),'String','Set your conversion options');
                 else
                     set(findobj('Tag','text_status'),'String','Please choose your ERA netCDF input file');
+                end
+            case 'calc_down_era5'
+                [ghm_main,~,~] = mGlobe_getModelPath;
+                output_path = fullfile(ghm_main,'ERA5');
+                start_calc = datenum(str2double(get(findobj('Tag','edit_down_time_start_year'),'String')),... % Get date of start
+                    str2double(get(findobj('Tag','edit_down_time_start_month'),'String')),...
+                    str2double(get(findobj('Tag','edit_down_time_start_day'),'String')),...
+                    str2double(get(findobj('Tag','edit_down_time_start_hour'),'String')),0,0);
+                end_calc = datenum(str2double(get(findobj('Tag','edit_down_time_end_year'),'String')),... % Get date of end
+                    str2double(get(findobj('Tag','edit_down_time_end_month'),'String')),...
+                    str2double(get(findobj('Tag','edit_down_time_end_day'),'String')),...
+                    str2double(get(findobj('Tag','edit_down_time_end_hour'),'String')),0,0);
+                step_calc = get(findobj('Tag','popup_down_time_step'),'Value'); % Get time step
+                input_file = get(findobj('Tag','push_down_era_input'),'UserData');
+                if start_calc > end_calc 									% check if starting time > end time
+                    set(findobj('Tag','text_status'),'String','Start time must be <= End time');
+                elseif ~isempty(input_file)
+                    set(findobj('Tag','text_status'),'String','Models: conversion starting...');drawnow
+                    mGlobe_convert_ERA5(start_calc,end_calc,step_calc,input_file,output_path) % covert ERA5 model
+                    pause(5);
+                    set(findobj('Tag','text_status'),'String','Set your conversion options');
+                else
+                    set(findobj('Tag','text_status'),'String','Please choose your ERA5 netCDF input file');
+                end
+            case 'calc_down_lsdm'
+                [ghm_main,~,~] = mGlobe_getModelPath;
+                output_path = fullfile(ghm_main,'LSDM');
+                start_calc = datenum(str2double(get(findobj('Tag','edit_down_time_start_year'),'String')),... % Get date of start
+                    str2double(get(findobj('Tag','edit_down_time_start_month'),'String')),...
+                    str2double(get(findobj('Tag','edit_down_time_start_day'),'String')),...
+                    str2double(get(findobj('Tag','edit_down_time_start_hour'),'String')),0,0);
+                end_calc = datenum(str2double(get(findobj('Tag','edit_down_time_end_year'),'String')),... % Get date of end
+                    str2double(get(findobj('Tag','edit_down_time_end_month'),'String')),...
+                    str2double(get(findobj('Tag','edit_down_time_end_day'),'String')),...
+                    str2double(get(findobj('Tag','edit_down_time_end_hour'),'String')),0,0);
+                step_calc = get(findobj('Tag','popup_down_time_step'),'Value'); % Get time step
+                input_file = get(findobj('Tag','push_down_era_input'),'UserData');
+                if start_calc > end_calc 									% check if starting time > end time
+                    set(findobj('Tag','text_status'),'String','Start time must be <= End time');
+                elseif ~isempty(input_file)
+                    set(findobj('Tag','text_status'),'String','Models: conversion starting...');drawnow
+                    mGlobe_convert_LSDM(start_calc,end_calc,step_calc,input_file,output_path) % covert LSDM model
+                    pause(5);
+                    set(findobj('Tag','text_status'),'String','Set your conversion options');
+                else
+                    set(findobj('Tag','text_status'),'String','Please choose your LSDM netCDF input file');
                 end
             case 'calc_down_ncep'
                 model_ver = menu('Choose NCEP version','Reanalysis 1 (beta)','Reanalysis 2');
