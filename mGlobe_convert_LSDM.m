@@ -31,7 +31,14 @@ function mGlobe_convert_LSDM(start_calc,end_calc,time_resol,file,ghc_path)
 %                                         M.Mikolaj, mikolaj@gfz-potsdam.de
 %                                                                18.06.2014
 %                                                                      v1.0
-
+%% Debugging
+% start_calc = datenum(2019,1,1,12,0,0);
+% end_calc = datenum(2019,1,3,12,0,0);
+% time_resol = 4; %1 day
+% file = 'C:\Users\mreich\Documents\mGlobeExperimental\mGlobe\GHM\LSDM\LSDM_ecm4io_day_2019_mass_0125.nc';
+% file = 'C:\Users\mreich\Documents\mGlobeExperimental\mGlobe\GHM\ERA\ERA_SM_and_Snow_2019.nc';
+% ghc_path = 'C:\Users\mreich\Documents\mGlobeExperimental\mGlobe\GHM\LSDM\';
+%% end debugging
 %% Time setting
 [year_s,month_s] = datevec(start_calc);                                     % transform matlab time to civil date
 [year_e,month_e] = datevec(end_calc);
@@ -81,30 +88,45 @@ try
     latitude = netcdf.getVar(ncid,1,'double');                              % get latitude                      
     longitude = netcdf.getVar(ncid,0,'double');                             % get longitude
     time_count = netcdf.getVar(ncid,2,'double');                            % get ERA Interim time
-    [numdims,numvars] = netcdf.inq(ncid);                                   % get ERA variables
+    [numdims,numvars] = netcdf.inq(ncid);                                  % get ERA variables
+    %% transform date to correct matlab format (counting all days since 1900)
+    % get time unit from netcdf file
+    time_unit = ncreadatt(file,'time','units'); 
+    time_start = strsplit(time_unit); 
+    % split into date and time
+    time_date = strsplit(time_start{1,3}, '-'); 
+    time_time = strsplit(time_start{1,4}, ':'); 
+    % convert to matlab format (days)
+    time_start_date = datenum(str2num(time_date{1,1}), str2num(time_date{1,2}), str2num(time_date{1,3}),0,0,0); 
+    % time_start_date = datenum(str2num(time_date{1,1}), str2num(time_date{1,2}), str2num(time_date{1,3}), str2num(time_time{1,1}), str2num(time_time{1,2}), str2num(time_time{1,3})); 
+    % add starting date [days] of dataset,
+    % subtract days of 1900-1-1 and
+    % multiply with 24 to get hours + offset of dataset start [hours]
+    time_count = (time_count + time_start_date - datenum(1900,1,1,0,0,0)) * 24 + str2num(time_time{1,1}); 
 catch
     set(findobj('Tag','text_status'),'String','Models: Load valid LSDM  (netCDF) file'); drawnow 
     return
 end
-
+%% 
 for i = 1:size(time,1);                                                     % create new file for each time epoch
     r = find(time_count == (time(i,7)-datenum(1900,1,1,0,0,0))*24);         % find corresponding time epoch
+    % r = find(time_count == (time(i,7)-datenum(1900,1,1,0,0,0)));          % find corresponding time epoch
     if ~isempty(r)                                                          % continue only if such time epoch does exist
     for j = 3:numvars-1                                                     % transform all layers (not only svwlX and sd)!!
         name = netcdf.inqVar(ncid,j);                                       % get variable name
         temp_var = netcdf.getVar(ncid,j,[0 0 r-1],[length(longitude) length(latitude) 1],'double'); % temporary variable
         temp_var = temp_var';                                               % transpose
-        scale_factor = netcdf.getAtt(ncid,j,'scale_factor');                % get scaling factor
-        add_offset = netcdf.getAtt(ncid,j,'add_offset');                    % get offset
-        temp_var = temp_var*scale_factor + add_offset;                      % transform to final units
+        % what is scaling factor and offset?
+        %scale_factor = netcdf.getAtt(ncid,j,'scale_factor');                % get scaling factor
+        %add_offset = netcdf.getAtt(ncid,j,'add_offset');                    % get offset
+        %temp_var = temp_var*scale_factor + add_offset;                      % transform to final units
         temp_var(temp_var<0) = 0;                                           % remove negative values (no negative values are expected)
         [out_mat.(name)] = temp_var;                                        % add new layer to the structure area field
     end
     [out_mat.lon,out_mat.lat] = meshgrid(longitude,latitude);               % meshgrid lon/lat matrices
     out_mat.time = time_count(r);                                           % store ERA interim time
 	out_mat.input_file = file;                                              % store used input file
-	%out_mat.units = 'mass = m3/m3';                                        % store units
-	out_mat.units = 'mass = m';                                          % store units
+	out_mat.units = 'mass = m';                                             % store units
     if size(time,1) > 2
         out_message = sprintf('Models: converting LSDM model ... (%3.0f%%)',100*((i-1)/size(time,1))); % create status message
     else
